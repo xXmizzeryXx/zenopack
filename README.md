@@ -12,6 +12,49 @@ Any platform that implements the ZenoPack spec can import and export games inter
 
 ---
 
+## Installation
+
+### Option 1 — Script Tag (recommended for most sites)
+
+Download `zenopack.js` and optionally `zenopack-ui.js`, place them in your project, then include them in your HTML:
+
+```html
+<!-- Core library (required) -->
+<script src="zenopack.js"></script>
+
+<!-- Optional: drop-in import UI -->
+<script src="zenopack-ui.js"></script>
+```
+
+That's it. `ZenoPack` and `ZenoPack_UI` are now available globally.
+
+### Option 2 — CDN (via jsDelivr)
+
+No download needed — link directly from a CDN. Replace `@1.0.0` with the latest version tag:
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/xXmizzeryXx/zenopack@1.0.0/zenopack.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/xXmizzeryXx/zenopack@1.0.0/zenopack-ui.js"></script>
+```
+
+### Option 3 — npm
+
+```bash
+npm install zenopack
+```
+
+```js
+const ZenoPack = require('zenopack');
+// or
+import ZenoPack from 'zenopack';
+```
+
+### Option 4 — Manual Implementation
+
+If you don't want to use the library at all, the format is simple enough to implement yourself in under 50 lines. See the [Implementation Guide](#implementation-guide) section below.
+
+---
+
 ## File Format
 
 A `.zenopack` file is a **UTF-8 encoded JSON document** with the `.zenopack` extension.
