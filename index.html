@@ -399,6 +399,7 @@ footer a:hover { text-decoration: underline; }
   <div class="converter-tabs">
     <button class="conv-tab active" onclick="switchConvTab('folder',this)"><i class="fa-solid fa-folder-open"></i>&nbsp; FROM FOLDER</button>
     <button class="conv-tab" onclick="switchConvTab('git',this)"><i class="fa-solid fa-code-branch"></i>&nbsp; FROM GIT</button>
+    <button class="conv-tab" onclick="switchConvTab('decompile',this)"><i class="fa-solid fa-box-open"></i>&nbsp; DECOMPILE</button>
   </div>
 
   <div class="converter-card">
@@ -490,6 +491,29 @@ footer a:hover { text-decoration: underline; }
       <div class="actions">
         <button class="btn-pack" id="gitPackBtn" disabled onclick="packGitSelected()"><i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ZENOPACK(S)</button>
         <button class="btn-clear" onclick="clearGit()">CLEAR</button>
+      </div>
+    </div>
+
+    <!-- DECOMPILE PANE -->
+    <div class="conv-pane" id="paneDecompile">
+      <div class="folder-drop" id="decompileDrop" onclick="document.getElementById('decompileInput').click()">
+        <input type="file" id="decompileInput" accept=".zenopack" style="display:none" onchange="handleDecompileInput(this.files[0])">
+        <div class="drop-icon"><i class="fa-solid fa-box-open"></i></div>
+        <div class="drop-title">DROP A .ZENOPACK FILE</div>
+        <div class="drop-sub">or click to browse &nbsp;•&nbsp; extracts back to a <em>.zip</em> folder</div>
+      </div>
+
+      <div class="file-list" id="decompileFileList"></div>
+
+      <div class="status-row">
+        <div class="status-text" id="decompileStatus"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="decompileProgress"></div></div>
+      </div>
+      <div class="actions">
+        <button class="btn-pack" id="decompileBtn" disabled onclick="runDecompile()" style="border-color:rgba(0,255,136,.35);background:linear-gradient(135deg,rgba(0,255,136,.12),rgba(0,245,255,.08));color:var(--green)">
+          <i class="fa-solid fa-file-zipper"></i>&nbsp; EXTRACT TO .ZIP
+        </button>
+        <button class="btn-clear" onclick="clearDecompile()">CLEAR</button>
       </div>
     </div>
 
@@ -903,6 +927,136 @@ function clearGit() {
   document.getElementById('gitCategory').value = '';
   setGitStatus('', '');
 }
+
+// ── DECOMPILE ─────────────────────────────────────────────────────
+// Load JSZip from CDN
+let JSZip = null;
+async function loadJSZip() {
+  if (JSZip) return JSZip;
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => { JSZip = window.JSZip; res(JSZip); };
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+let decompilePack = null;
+
+function setDecompileStatus(msg, cls='') {
+  const el = document.getElementById('decompileStatus');
+  el.textContent = msg; el.className = 'status-text' + (cls?' '+cls:'');
+}
+
+async function handleDecompileInput(file) {
+  if (!file) return;
+  if (!file.name.endsWith('.zenopack')) {
+    setDecompileStatus('FILE MUST BE A .ZENOPACK', 'err'); return;
+  }
+
+  setDecompileStatus('READING FILE...', 'info');
+  document.getElementById('decompileProgress').style.width = '30%';
+
+  try {
+    const text = await file.text();
+    const pack = JSON.parse(text);
+
+    if (!pack.zenopack || !pack.files?.length) {
+      setDecompileStatus('INVALID .ZENOPACK FILE', 'err');
+      document.getElementById('decompileProgress').style.width = '0%';
+      return;
+    }
+
+    decompilePack = pack;
+
+    // Show file list
+    const listEl = document.getElementById('decompileFileList');
+    listEl.style.display = 'block';
+    listEl.innerHTML = pack.files.map(f =>
+      `<div class="fl-item ${f.path.toLowerCase()==='index.html'?'index':''}">${f.path} <span style="color:var(--muted);font-size:10px">(${(f.data.length/1024).toFixed(1)}KB)</span></div>`
+    ).join('');
+
+    document.getElementById('decompileProgress').style.width = '100%';
+    setTimeout(() => document.getElementById('decompileProgress').style.width = '0%', 600);
+    setDecompileStatus(`${pack.files.length} FILES — READY TO EXTRACT`, 'ok');
+    document.getElementById('decompileBtn').disabled = false;
+
+  } catch(e) {
+    setDecompileStatus('FAILED TO PARSE: ' + e.message, 'err');
+    document.getElementById('decompileProgress').style.width = '0%';
+  }
+
+  document.getElementById('decompileInput').value = '';
+}
+
+async function runDecompile() {
+  if (!decompilePack) return;
+  document.getElementById('decompileBtn').disabled = true;
+  setDecompileStatus('LOADING ZIP LIBRARY...', 'info');
+
+  try {
+    await loadJSZip();
+    setDecompileStatus('BUILDING ZIP...', 'info');
+
+    const bar = document.getElementById('decompileProgress');
+    bar.style.width = '0%';
+    const zip = new JSZip();
+    const folder = zip.folder(decompilePack.name);
+
+    for (let i = 0; i < decompilePack.files.length; i++) {
+      const f = decompilePack.files[i];
+      bar.style.width = Math.round((i / decompilePack.files.length) * 80) + '%';
+      const uint8 = new Uint8Array(f.data);
+      folder.file(f.path, uint8, { binary: true });
+    }
+
+    bar.style.width = '90%';
+    setDecompileStatus('COMPRESSING...', 'info');
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    bar.style.width = '100%';
+
+    // Download
+    const safeName = decompilePack.name.replace(/[^a-z0-9_\-]/gi, '_');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = safeName + '.zip';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    setDecompileStatus(`✓ ${decompilePack.name}.zip DOWNLOADED`, 'ok');
+    showToast('EXTRACTED SUCCESSFULLY', 'ok');
+
+  } catch(e) {
+    setDecompileStatus('FAILED: ' + e.message, 'err');
+    showToast('EXTRACTION FAILED', 'err');
+  }
+
+  document.getElementById('decompileBtn').disabled = false;
+}
+
+function clearDecompile() {
+  decompilePack = null;
+  document.getElementById('decompileInput').value = '';
+  document.getElementById('decompileFileList').style.display = 'none';
+  document.getElementById('decompileFileList').innerHTML = '';
+  document.getElementById('decompileBtn').disabled = true;
+  document.getElementById('decompileProgress').style.width = '0%';
+  setDecompileStatus('', '');
+}
+
+// Drag-drop for decompile zone
+const decompileDrop = document.getElementById('decompileDrop');
+decompileDrop.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); decompileDrop.classList.add('over'); });
+decompileDrop.addEventListener('dragleave', () => decompileDrop.classList.remove('over'));
+decompileDrop.addEventListener('drop', e => {
+  e.preventDefault(); e.stopPropagation(); decompileDrop.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file?.name.endsWith('.zenopack')) handleDecompileInput(file);
+  else { setDecompileStatus('DROP A .ZENOPACK FILE', 'err'); }
+});
+
 </script>
 </body>
 </html>
