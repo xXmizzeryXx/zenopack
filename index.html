@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZenoPack Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --bg: #04040a;
+  --bg2: #08080f;
+  --bg3: #0d0d1a;
+  --cyan: #00f5ff;
+  --pink: #ff006e;
+  --purple: #bf00ff;
+  --green: #00ff88;
+  --gold: #ffd700;
+  --text: #dde8ff;
+  --muted: #4a5272;
+  --border: rgba(0,245,255,0.12);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+
+/* Glow orbs */
+body::after {
+  content: '';
+  position: fixed;
+  width: 700px; height: 700px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,245,255,0.04) 0%, transparent 70%);
+  top: -200px; left: 50%; transform: translateX(-50%);
+  pointer-events: none; z-index: 0;
+}
+
+.scanlines {
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none; z-index: 1;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 60px;
+  background: rgba(4,4,10,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: 'Orbitron', monospace; font-weight: 900;
+  font-size: 16px; letter-spacing: 4px;
+  color: var(--cyan); text-shadow: 0 0 20px rgba(0,245,255,0.5);
+  text-decoration: none;
+}
+.nav-logo span { color: var(--text); font-weight: 400; opacity: .5; font-size: 11px; letter-spacing: 3px; }
+.nav-links { display: flex; gap: 24px; align-items: center; }
+.nav-link {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); text-decoration: none; transition: color .2s;
+}
+.nav-link:hover { color: var(--cyan); }
+.nav-badge {
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 1px;
+  padding: 4px 10px; border-radius: 3px;
+  border: 1px solid rgba(0,245,255,0.25);
+  background: rgba(0,245,255,0.06); color: var(--cyan);
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative; z-index: 2;
+  text-align: center; padding: 80px 24px 64px;
+}
+.hero-eyebrow {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 5px;
+  color: var(--cyan); opacity: .7; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.hero-eyebrow::before, .hero-eyebrow::after {
+  content: ''; width: 40px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan));
+}
+.hero-eyebrow::after { transform: scaleX(-1); }
+
+.hero-title {
+  font-family: 'Orbitron', monospace; font-weight: 900;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  letter-spacing: 6px; line-height: 1.1;
+  margin-bottom: 20px;
+}
+.hero-title .z { color: var(--cyan); text-shadow: 0 0 40px rgba(0,245,255,0.5); }
+.hero-title .p { color: var(--purple); text-shadow: 0 0 40px rgba(191,0,255,0.4); }
+
+.hero-sub {
+  font-size: 16px; color: var(--muted); letter-spacing: 1px;
+  max-width: 520px; margin: 0 auto 40px; line-height: 1.7;
+}
+.hero-sub em { color: var(--text); font-style: normal; }
+
+.hero-pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+.pill {
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 2px;
+  padding: 6px 14px; border-radius: 20px;
+  border: 1px solid; display: flex; align-items: center; gap: 6px;
+}
+.pill.cyan  { border-color: rgba(0,245,255,.2);  color: var(--cyan);   background: rgba(0,245,255,.05); }
+.pill.purple{ border-color: rgba(191,0,255,.2); color: var(--purple); background: rgba(191,0,255,.05); }
+.pill.green { border-color: rgba(0,255,136,.2);  color: var(--green);  background: rgba(0,255,136,.05); }
+
+/* ── MAIN LAYOUT ── */
+.main-wrap {
+  position: relative; z-index: 2;
+  max-width: 860px; margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── TABS ── */
+.converter-tabs {
+  display: flex; gap: 6px; margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.conv-tab {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  padding: 12px 20px; cursor: pointer; border: none; background: transparent;
+  color: var(--muted); transition: all .2s; position: relative;
+  border-radius: 6px 6px 0 0;
+}
+.conv-tab::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
+  background: var(--cyan); opacity: 0; transition: opacity .2s;
+}
+.conv-tab.active { color: var(--cyan); background: rgba(0,245,255,0.04); }
+.conv-tab.active::after { opacity: 1; }
+.conv-tab:hover:not(.active) { color: var(--text); }
+
+/* ── CONVERTER CARD ── */
+.converter-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 32px;
+  margin-bottom: 32px;
+}
+
+/* Panes */
+.conv-pane { display: none; }
+.conv-pane.active { display: block; }
+
+/* ── FOLDER DROP ── */
+.folder-drop {
+  border: 2px dashed rgba(0,245,255,.2);
+  border-radius: 12px; padding: 48px 24px;
+  text-align: center; cursor: pointer;
+  transition: all .25s; background: rgba(0,245,255,.01);
+  position: relative; margin-bottom: 20px;
+}
+.folder-drop:hover, .folder-drop.over {
+  border-color: rgba(0,245,255,.5);
+  background: rgba(0,245,255,.04);
+  box-shadow: 0 0 30px rgba(0,245,255,.05);
+}
+.folder-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-icon { font-size: 3rem; color: rgba(0,245,255,.25); margin-bottom: 16px; transition: color .2s; }
+.folder-drop:hover .drop-icon { color: rgba(0,245,255,.5); }
+.drop-title {
+  font-family: 'Orbitron', monospace; font-size: 12px; letter-spacing: 3px;
+  color: var(--text); margin-bottom: 8px;
+}
+.drop-sub { font-size: 13px; color: var(--muted); letter-spacing: .5px; }
+.drop-sub em { color: var(--cyan); font-style: normal; }
+
+/* File list */
+.file-list {
+  background: rgba(0,0,0,.3); border: 1px solid rgba(0,245,255,.08);
+  border-radius: 8px; padding: 12px;
+  max-height: 160px; overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--muted); margin-bottom: 16px; display: none;
+}
+.file-list::-webkit-scrollbar { width: 3px; }
+.file-list::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 3px; }
+.file-list .fl-item { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+.file-list .fl-item:last-child { border: none; }
+.file-list .fl-item.index { color: var(--green); }
+
+/* ── GIT PANE ── */
+.git-input-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.git-url-input {
+  flex: 1; background: rgba(0,245,255,.03);
+  border: 1px solid rgba(0,245,255,.18); border-radius: 8px;
+  padding: 11px 14px; color: var(--text);
+  font-family: 'Rajdhani', sans-serif; font-size: 14px;
+  outline: none; transition: border-color .2s; letter-spacing: .3px;
+}
+.git-url-input:focus { border-color: rgba(0,245,255,.45); }
+.git-url-input::placeholder { color: var(--muted); }
+.btn-scan {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  padding: 11px 20px; border-radius: 8px; cursor: pointer; flex-shrink: 0;
+  border: 1px solid rgba(0,245,255,.3);
+  background: linear-gradient(135deg, rgba(0,245,255,.1), rgba(191,0,255,.08));
+  color: var(--cyan); transition: all .2s;
+}
+.btn-scan:hover { border-color: var(--cyan); box-shadow: 0 0 16px rgba(0,245,255,.15); }
+.btn-scan:disabled { opacity: .3; cursor: not-allowed; pointer-events: none; }
+
+.git-game-list {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  max-height: 240px; overflow-y: auto; margin-bottom: 16px; display: none;
+}
+.git-game-list::-webkit-scrollbar { width: 3px; }
+.git-game-list::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 3px; }
+.git-game-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid rgba(0,245,255,.08);
+  border-radius: 8px; cursor: pointer; transition: all .2s;
+  background: rgba(0,245,255,.02); user-select: none;
+}
+.git-game-item:hover { border-color: rgba(0,245,255,.25); background: rgba(0,245,255,.04); }
+.git-game-item.selected { border-color: rgba(0,255,136,.4); background: rgba(0,255,136,.05); }
+.git-check {
+  width: 16px; height: 16px; border-radius: 4px;
+  border: 1px solid rgba(0,245,255,.2); display: flex;
+  align-items: center; justify-content: center;
+  font-size: 9px; color: var(--green); flex-shrink: 0;
+}
+.git-game-item.selected .git-check { background: rgba(0,255,136,.15); border-color: rgba(0,255,136,.5); }
+.git-game-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.git-game-files { font-family: 'Orbitron', monospace; font-size: 7px; letter-spacing: 1px; color: var(--muted); }
+
+.git-footer { display: flex; align-items: center; justify-content: space-between; }
+.git-sel-all {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); background: none; border: none; cursor: pointer; transition: color .2s;
+}
+.git-sel-all:hover { color: var(--cyan); }
+
+/* ── SHARED FIELDS ── */
+.fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 2px; color: var(--muted);
+}
+.field-input, .field-select {
+  background: rgba(0,245,255,.03); border: 1px solid rgba(0,245,255,.15);
+  border-radius: 7px; padding: 9px 12px; color: var(--text);
+  font-family: 'Rajdhani', sans-serif; font-size: 14px;
+  outline: none; transition: border-color .2s; width: 100%;
+}
+.field-input:focus, .field-select:focus { border-color: rgba(0,245,255,.45); }
+.field-input::placeholder { color: var(--muted); }
+.field-select option { background: #0d0d1a; }
+.field-select { cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a5272'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+
+/* ── STATUS / PROGRESS ── */
+.status-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px; min-height: 20px;
+}
+.status-text {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); transition: color .2s;
+}
+.status-text.ok { color: var(--green); }
+.status-text.err { color: var(--pink); }
+.status-text.info { color: var(--cyan); }
+.progress-wrap {
+  flex: 1; height: 3px; background: rgba(0,245,255,.08);
+  border-radius: 3px; overflow: hidden;
+}
+.progress-bar {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  transition: width .2s; width: 0%;
+}
+
+/* ── ACTION BUTTONS ── */
+.actions { display: flex; gap: 10px; align-items: center; }
+.btn-pack {
+  font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 2px;
+  padding: 13px 28px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(0,245,255,.35);
+  background: linear-gradient(135deg, rgba(0,245,255,.14), rgba(191,0,255,.1));
+  color: var(--cyan); transition: all .2s; font-weight: 700;
+}
+.btn-pack:hover { border-color: var(--cyan); box-shadow: 0 0 24px rgba(0,245,255,.18); transform: translateY(-1px); }
+.btn-pack:disabled { opacity: .3; cursor: not-allowed; pointer-events: none; transform: none; }
+.btn-clear {
+  font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 2px;
+  padding: 13px 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted); transition: all .2s;
+}
+.btn-clear:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+/* ── INFO CARDS ── */
+.info-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 16px;
+  position: relative; z-index: 2;
+  max-width: 860px; margin: 0 auto 60px; padding: 0 24px;
+}
+.info-card {
+  background: rgba(255,255,255,.02); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px 20px;
+}
+.info-card-icon { font-size: 1.8rem; margin-bottom: 12px; }
+.info-card-title {
+  font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 2px;
+  color: var(--text); margin-bottom: 8px;
+}
+.info-card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 2; text-align: center;
+  padding: 32px 24px; border-top: 1px solid var(--border);
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 2px; color: var(--muted);
+}
+footer a { color: var(--cyan); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: rgba(8,8,15,.97); border: 1px solid rgba(0,245,255,.2);
+  border-radius: 8px; padding: 12px 24px;
+  font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 2px;
+  color: var(--cyan); z-index: 9999;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1); white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: rgba(255,0,110,.3); color: var(--pink); }
+.toast.ok  { border-color: rgba(0,255,136,.3); color: var(--green); }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+.fade-up { animation: fadeUp .5s ease both; }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">ZENO<span>PACK</span></a>
+  <div class="nav-links">
+    <a href="https://github.com/xXmizzeryXx/zenopack" target="_blank" class="nav-link"><i class="fa-brands fa-github"></i> GITHUB</a>
+    <span class="nav-badge">v1.0</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero fade-up">
+  <div class="hero-eyebrow">ECLIPSE SUITE // OPEN FORMAT</div>
+  <h1 class="hero-title">
+    <span class="z">ZENO</span><span class="p">PACK</span><br>
+    <span style="font-size:.45em;letter-spacing:8px;color:var(--text);opacity:.7">CONVERTER</span>
+  </h1>
+  <p class="hero-sub">
+    Turn any web game folder or <em>Git repository</em> into a portable
+    <em>.zenopack</em> file — instantly, entirely in your browser.
+  </p>
+  <div class="hero-pills">
+    <span class="pill cyan"><i class="fa-solid fa-folder"></i> FOLDER UPLOAD</span>
+    <span class="pill purple"><i class="fa-solid fa-code-branch"></i> GIT IMPORT</span>
+    <span class="pill green"><i class="fa-solid fa-bolt"></i> NO SERVER NEEDED</span>
+  </div>
+</section>
+
+<!-- CONVERTER -->
+<div class="main-wrap">
+  <div class="converter-tabs">
+    <button class="conv-tab active" onclick="switchConvTab('folder',this)"><i class="fa-solid fa-folder-open"></i>&nbsp; FROM FOLDER</button>
+    <button class="conv-tab" onclick="switchConvTab('git',this)"><i class="fa-solid fa-code-branch"></i>&nbsp; FROM GIT</button>
+  </div>
+
+  <div class="converter-card">
+
+    <!-- FOLDER PANE -->
+    <div class="conv-pane active" id="paneFolder">
+      <div class="folder-drop" id="folderDrop">
+        <input type="file" id="folderInput" webkitdirectory multiple onchange="handleFolderInput(this.files)">
+        <div class="drop-icon"><i class="fa-solid fa-folder-plus"></i></div>
+        <div class="drop-title">DROP A GAME FOLDER</div>
+        <div class="drop-sub">or click to browse &nbsp;•&nbsp; must contain <em>index.html</em></div>
+      </div>
+      <div class="file-list" id="folderFileList"></div>
+
+      <div class="fields-row">
+        <div class="field">
+          <div class="field-label">GAME NAME</div>
+          <input class="field-input" type="text" id="folderName" placeholder="Auto-detected from folder..." maxlength="128" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <div class="field-label">CATEGORY</div>
+          <select class="field-select" id="folderCategory">
+            <option value="">— None —</option>
+            <option value="arcade">Arcade</option>
+            <option value="puzzle">Puzzle</option>
+            <option value="platformer">Platformer</option>
+            <option value="shooter">Shooter</option>
+            <option value="rpg">RPG</option>
+            <option value="strategy">Strategy</option>
+            <option value="sports">Sports</option>
+            <option value="racing">Racing</option>
+            <option value="horror">Horror</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <div class="field-label">DESCRIPTION (optional)</div>
+        <input class="field-input" type="text" id="folderDesc" placeholder="Short description of the game..." maxlength="512" autocomplete="off"/>
+      </div>
+
+      <div class="status-row">
+        <div class="status-text" id="folderStatus"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="folderProgress"></div></div>
+      </div>
+      <div class="actions">
+        <button class="btn-pack" id="folderPackBtn" disabled onclick="packFolder()"><i class="fa-solid fa-box-archive"></i>&nbsp; CREATE .ZENOPACK</button>
+        <button class="btn-clear" onclick="clearFolder()">CLEAR</button>
+      </div>
+    </div>
+
+    <!-- GIT PANE -->
+    <div class="conv-pane" id="paneGit">
+      <div class="git-input-row">
+        <input class="git-url-input" id="gitUrl" type="text"
+          placeholder="https://git.gay/user/repo  •  github.com/user/repo  •  user/repo"
+          spellcheck="false" autocomplete="off"/>
+        <button class="btn-scan" id="gitScanBtn" onclick="gitScan()"><i class="fa-solid fa-magnifying-glass"></i>&nbsp; SCAN</button>
+      </div>
+      <div class="git-game-list" id="gitGameList"></div>
+      <div class="git-footer" id="gitFooter" style="display:none;margin-bottom:16px">
+        <button class="git-sel-all" id="gitSelAll" onclick="gitToggleAll()">SELECT ALL</button>
+        <span class="status-text info" id="gitFoundLabel"></span>
+      </div>
+
+      <div class="fields-row">
+        <div class="field">
+          <div class="field-label">CATEGORY (applied to all)</div>
+          <select class="field-select" id="gitCategory">
+            <option value="">— None —</option>
+            <option value="arcade">Arcade</option>
+            <option value="puzzle">Puzzle</option>
+            <option value="platformer">Platformer</option>
+            <option value="shooter">Shooter</option>
+            <option value="rpg">RPG</option>
+            <option value="strategy">Strategy</option>
+            <option value="sports">Sports</option>
+            <option value="racing">Racing</option>
+            <option value="horror">Horror</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-text" id="gitStatus"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="gitProgress"></div></div>
+      </div>
+      <div class="actions">
+        <button class="btn-pack" id="gitPackBtn" disabled onclick="packGitSelected()"><i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ZENOPACK(S)</button>
+        <button class="btn-clear" onclick="clearGit()">CLEAR</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- INFO CARDS -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-card-icon">📦</div>
+      <div class="info-card-title">WHAT IS .ZENOPACK?</div>
+      <div class="info-card-body">A self-contained game package — HTML, JS, CSS, and assets bundled into one portable file. Works on any platform that supports the format.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-icon">🔒</div>
+      <div class="info-card-title">100% CLIENT-SIDE</div>
+      <div class="info-card-body">Nothing is uploaded to any server. All conversion happens locally in your browser. Your game files never leave your device.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-icon">⚡</div>
+      <div class="info-card-title">UNIVERSAL FORMAT</div>
+      <div class="info-card-body">Any unblocker or gaming platform that implements the ZenoPack spec can load your .zenopack files — share games across platforms instantly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  ZENOPACK v1.0 &nbsp;•&nbsp; ECLIPSE SUITE &nbsp;•&nbsp;
+  <a href="https://github.com/xXmizzeryXx/zenopack" target="_blank">GITHUB</a>
+  &nbsp;•&nbsp; MIT LICENSE
+</footer>
+
+<script>
+const ZENOPACK_VERSION = '1.0';
+const MIME_MAP = {
+  html:'text/html',htm:'text/html',js:'application/javascript',mjs:'application/javascript',
+  cjs:'application/javascript',css:'text/css',json:'application/json',
+  png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',
+  webp:'image/webp',svg:'image/svg+xml',bmp:'image/bmp',ico:'image/x-icon',
+  mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',
+  woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',eot:'application/vnd.ms-fontobject',
+  txt:'text/plain',xml:'application/xml',wasm:'application/wasm',
+};
+const getMime = n => MIME_MAP[n.split('.').pop().toLowerCase()] || 'application/octet-stream';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// ── TAB SWITCH ────────────────────────────────────────────────────
+function switchConvTab(tab, btn) {
+  document.querySelectorAll('.conv-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.conv-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('pane' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast' + (type?' '+type:'');
+  void t.offsetWidth; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── EXPORT HELPER ─────────────────────────────────────────────────
+async function buildAndDownload(name, fileRecords, category, description) {
+  const files = [];
+  for (const r of fileRecords) {
+    const buf = await r.file.arrayBuffer();
+    files.push({ path: r.path, mimeType: r.mimeType, data: Array.from(new Uint8Array(buf)) });
+  }
+  const pack = {
+    zenopack: ZENOPACK_VERSION, name,
+    category: category || null,
+    description: description || null,
+    fileCount: files.length,
+    exportedAt: new Date().toISOString(),
+    files,
+  };
+  const blob = new Blob([JSON.stringify(pack)], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name.replace(/[^a-z0-9_\-]/gi,'_') + '.zenopack';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ── FOLDER PANE ───────────────────────────────────────────────────
+let folderRecords = [];
+
+function handleFolderInput(fileList) {
+  if (!fileList?.length) return;
+  const files = [...fileList];
+  const folderName = files[0].webkitRelativePath.split('/')[0];
+  const hasIndex = files.some(f => {
+    const p = f.webkitRelativePath.split('/');
+    return p.length === 2 && p[1].toLowerCase() === 'index.html';
+  });
+
+  if (!hasIndex) {
+    setFolderStatus('NO INDEX.HTML FOUND IN FOLDER', 'err');
+    return;
+  }
+
+  folderRecords = files.map(f => ({
+    file: f,
+    path: f.webkitRelativePath.split('/').slice(1).join('/'),
+    mimeType: getMime(f.name),
+  }));
+
+  // Auto-fill name
+  if (!document.getElementById('folderName').value) {
+    document.getElementById('folderName').value = folderName;
+  }
+
+  // Show file list
+  const listEl = document.getElementById('folderFileList');
+  listEl.style.display = 'block';
+  listEl.innerHTML = folderRecords.map(r =>
+    `<div class="fl-item ${r.path.toLowerCase()==='index.html'?'index':''}">${r.path}</div>`
+  ).join('');
+
+  document.getElementById('folderPackBtn').disabled = false;
+  setFolderStatus(`${folderRecords.length} FILES READY`, 'ok');
+}
+
+function setFolderStatus(msg, cls='') {
+  const el = document.getElementById('folderStatus');
+  el.textContent = msg; el.className = 'status-text' + (cls?' '+cls:'');
+}
+
+async function packFolder() {
+  if (!folderRecords.length) return;
+  const name = document.getElementById('folderName').value.trim() || 'Game';
+  const category = document.getElementById('folderCategory').value;
+  const desc = document.getElementById('folderDesc').value.trim();
+
+  document.getElementById('folderPackBtn').disabled = true;
+  setFolderStatus('BUILDING ZENOPACK...', 'info');
+
+  const bar = document.getElementById('folderProgress');
+  bar.style.width = '0%';
+
+  // Simulate progress ticks while reading files
+  let prog = 0;
+  const interval = setInterval(() => { prog = Math.min(prog + 3, 88); bar.style.width = prog + '%'; }, 80);
+
+  try {
+    await buildAndDownload(name, folderRecords, category, desc);
+    clearInterval(interval);
+    bar.style.width = '100%';
+    setFolderStatus(`✓ ${name}.zenopack DOWNLOADED`, 'ok');
+    showToast('ZENOPACK CREATED', 'ok');
+  } catch(e) {
+    clearInterval(interval);
+    setFolderStatus('FAILED: ' + e.message, 'err');
+    showToast('FAILED', 'err');
+  }
+  document.getElementById('folderPackBtn').disabled = false;
+}
+
+function clearFolder() {
+  folderRecords = [];
+  document.getElementById('folderInput').value = '';
+  document.getElementById('folderName').value = '';
+  document.getElementById('folderDesc').value = '';
+  document.getElementById('folderCategory').value = '';
+  document.getElementById('folderFileList').style.display = 'none';
+  document.getElementById('folderFileList').innerHTML = '';
+  document.getElementById('folderPackBtn').disabled = true;
+  document.getElementById('folderProgress').style.width = '0%';
+  setFolderStatus('', '');
+}
+
+// Drag-drop on folder zone
+const folderDrop = document.getElementById('folderDrop');
+folderDrop.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); folderDrop.classList.add('over'); });
+folderDrop.addEventListener('dragleave', () => folderDrop.classList.remove('over'));
+folderDrop.addEventListener('drop', async e => {
+  e.preventDefault(); e.stopPropagation(); folderDrop.classList.remove('over');
+  const files = [];
+  await Promise.all([...(e.dataTransfer.items||[])].map(item => {
+    const en = item.webkitGetAsEntry?.();
+    if (en?.isDirectory) return readDir(en, files, en.name);
+  }).filter(Boolean));
+  if (files.length) handleFolderInput(files);
+});
+
+async function readDir(dir, results, base) {
+  const entries = await getAllEntries(dir);
+  await Promise.all(entries.map(entry => {
+    const path = base + '/' + entry.name;
+    if (entry.isFile) return new Promise(r => entry.file(f => {
+      Object.defineProperty(f, 'webkitRelativePath', { value: path, writable: false, configurable: true });
+      results.push(f); r();
+    }));
+    else if (entry.isDirectory) return readDir(entry, results, path);
+  }));
+}
+function getAllEntries(d) {
+  return new Promise(res => {
+    const r = d.createReader(); let a = [];
+    const read = () => r.readEntries(b => { if (!b.length) return res(a); a = a.concat([...b]); read(); });
+    read();
+  });
+}
+
+// ── GIT PANE ──────────────────────────────────────────────────────
+let gitFoundGames = [];
+let gitCurrentCfg = null;
+let gitCurrentBranch = null;
+
+function parseRepoUrl(raw) {
+  raw = raw.trim().replace(/\/+$/, '').replace(/\.git$/, '');
+  const m = raw.match(/(?:https?:\/\/)?([^/\s]+\.[^/\s]+)\/([^/\s]+)\/([^/\s]+)/);
+  if (m) {
+    const host = m[1], owner = m[2], repo = m[3];
+    if (host === 'github.com') return { type: 'github', host, owner, repo };
+    return { type: 'forgejo', host, owner, repo };
+  }
+  const m2 = raw.match(/^([^/\s]+)\/([^/\s]+)$/);
+  if (m2) return { type: 'forgejo', host: 'git.gay', owner: m2[1], repo: m2[2] };
+  return null;
+}
+
+async function gitApiFetch(url, type) {
+  const headers = type === 'github' ? { 'Accept': 'application/vnd.github.v3+json' } : {};
+  const res = await fetch(url, { headers });
+  if (res.status === 403) throw new Error('RATE LIMITED');
+  if (res.status === 404) throw new Error('REPO NOT FOUND');
+  if (!res.ok) throw new Error('API ERROR ' + res.status);
+  return res.json();
+}
+
+async function getDefaultBranch(cfg) {
+  if (cfg.type === 'github') {
+    const d = await gitApiFetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`, 'github');
+    return d.default_branch || 'main';
+  } else if (cfg.type === 'gitlab') {
+    const id = encodeURIComponent(cfg.owner + '/' + cfg.repo);
+    const d = await gitApiFetch(`https://${cfg.host}/api/v4/projects/${id}`, 'gitlab');
+    return d.default_branch || 'main';
+  } else {
+    const d = await gitApiFetch(`https://${cfg.host}/api/v1/repos/${cfg.owner}/${cfg.repo}`, 'forgejo');
+    return d.default_branch || 'main';
+  }
+}
+
+async function getRepoTree(cfg, branch) {
+  if (cfg.type === 'github') {
+    const data = await gitApiFetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/git/trees/${branch}?recursive=1`, 'github');
+    return (data.tree || []).map(f => ({ path: f.path, type: f.type === 'blob' ? 'blob' : 'tree' }));
+  } else {
+    const data = await gitApiFetch(`https://${cfg.host}/api/v1/repos/${cfg.owner}/${cfg.repo}/git/trees/${branch}?recursive=true`, 'forgejo');
+    return (data.tree || []).map(f => ({ path: f.path, type: f.type }));
+  }
+}
+
+function getRawUrl(cfg, branch, filePath) {
+  if (cfg.type === 'github') return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${branch}/${filePath}`;
+  return `https://${cfg.host}/${cfg.owner}/${cfg.repo}/raw/branch/${branch}/${filePath}`;
+}
+
+function setGitStatus(msg, cls='') {
+  const el = document.getElementById('gitStatus');
+  el.textContent = msg; el.className = 'status-text' + (cls?' '+cls:'');
+}
+
+document.getElementById('gitUrl').addEventListener('keydown', e => { if (e.key === 'Enter') gitScan(); });
+
+async function gitScan() {
+  const raw = document.getElementById('gitUrl').value;
+  const cfg = parseRepoUrl(raw);
+  if (!cfg) { setGitStatus('INVALID URL', 'err'); return; }
+
+  const btn = document.getElementById('gitScanBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; SCANNING';
+  setGitStatus(`SCANNING ${cfg.owner}/${cfg.repo}...`, 'info');
+  document.getElementById('gitGameList').style.display = 'none';
+  document.getElementById('gitFooter').style.display = 'none';
+  document.getElementById('gitPackBtn').disabled = true;
+  gitFoundGames = []; gitCurrentCfg = cfg;
+
+  try {
+    const branch = await getDefaultBranch(cfg);
+    gitCurrentBranch = branch;
+    setGitStatus('FETCHING FILE TREE...', 'info');
+    const tree = await getRepoTree(cfg, branch);
+
+    const folderMap = {};
+    for (const item of tree) {
+      if (item.type !== 'blob') continue;
+      const parts = item.path.split('/');
+      if (parts.length === 2 && parts[1].toLowerCase() === 'index.html') folderMap[parts[0]] = [];
+    }
+    if (tree.some(f => f.path === 'index.html')) folderMap['[root]'] = [];
+
+    if (!Object.keys(folderMap).length) {
+      setGitStatus('NO GAME FOLDERS FOUND', 'err');
+      btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>&nbsp; SCAN';
+      return;
+    }
+
+    for (const item of tree) {
+      if (item.type !== 'blob') continue;
+      const parts = item.path.split('/');
+      if (parts.length === 1 && '[root]' in folderMap) {
+        folderMap['[root]'].push({ path: item.path, url: getRawUrl(cfg, branch, item.path) });
+      } else if (parts.length >= 2 && parts[0] in folderMap) {
+        folderMap[parts[0]].push({ path: parts.slice(1).join('/'), url: getRawUrl(cfg, branch, item.path) });
+      }
+    }
+
+    gitFoundGames = Object.entries(folderMap).map(([name, files]) => ({ name, files, selected: false }));
+    setGitStatus(`FOUND ${gitFoundGames.length} GAME${gitFoundGames.length !== 1 ? 'S' : ''}`, 'ok');
+    renderGitList();
+    document.getElementById('gitFoundLabel').textContent = `${gitFoundGames.length} GAMES`;
+    document.getElementById('gitFooter').style.display = 'flex';
+
+  } catch(e) {
+    setGitStatus(e.message || 'SCAN FAILED', 'err');
+  }
+
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>&nbsp; SCAN';
+}
+
+function renderGitList() {
+  const list = document.getElementById('gitGameList');
+  list.style.display = 'grid';
+  list.innerHTML = gitFoundGames.map((g, i) => `
+    <div class="git-game-item ${g.selected?'selected':''}" onclick="gitToggleItem(${i})">
+      <div class="git-check">${g.selected?'<i class="fa-solid fa-check"></i>':''}</div>
+      <div class="git-game-name">${esc(g.name === '[root]' ? 'Root Game' : g.name)}</div>
+      <div class="git-game-files">${g.files.length}F</div>
+    </div>`).join('');
+  updateGitSelAll();
+  document.getElementById('gitPackBtn').disabled = !gitFoundGames.some(g => g.selected);
+  const count = gitFoundGames.filter(g => g.selected).length;
+  document.getElementById('gitPackBtn').innerHTML = count > 0
+    ? `<i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ${count} ZENOPACK${count>1?'S':''}`
+    : '<i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ZENOPACK(S)';
+}
+
+function gitToggleItem(i) { gitFoundGames[i].selected = !gitFoundGames[i].selected; renderGitList(); }
+function gitToggleAll() {
+  const all = gitFoundGames.every(g => g.selected);
+  gitFoundGames.forEach(g => g.selected = !all);
+  renderGitList();
+}
+function updateGitSelAll() {
+  document.getElementById('gitSelAll').textContent =
+    gitFoundGames.every(g => g.selected) ? 'DESELECT ALL' : 'SELECT ALL';
+}
+
+async function packGitSelected() {
+  const toPack = gitFoundGames.filter(g => g.selected);
+  if (!toPack.length) return;
+  const category = document.getElementById('gitCategory').value;
+
+  document.getElementById('gitPackBtn').disabled = true;
+  const bar = document.getElementById('gitProgress');
+  bar.style.width = '0%';
+
+  let done = 0;
+  for (const g of toPack) {
+    const displayName = g.name === '[root]' ? (gitCurrentCfg?.repo || 'Game') : g.name;
+    setGitStatus(`DOWNLOADING: ${displayName} (${done+1}/${toPack.length})`, 'info');
+
+    try {
+      const fileRecords = [];
+      for (let i = 0; i < g.files.length; i++) {
+        const f = g.files[i];
+        bar.style.width = Math.round(((done + i/g.files.length) / toPack.length) * 90) + '%';
+        try {
+          const res = await fetch(f.url);
+          if (!res.ok) continue;
+          const buf = await res.arrayBuffer();
+          const mime = getMime(f.path.split('/').pop());
+          const file = new File([buf], f.path.split('/').pop(), { type: mime });
+          Object.defineProperty(file, 'webkitRelativePath', { value: displayName+'/'+f.path, writable:false, configurable:true });
+          fileRecords.push({ file, path: f.path, mimeType: mime });
+        } catch(e) { console.warn('Failed:', f.url); }
+      }
+
+      if (!fileRecords.some(r => r.path.toLowerCase() === 'index.html')) {
+        showToast(`SKIPPED ${displayName}: no index.html`, 'err');
+      } else {
+        await buildAndDownload(displayName, fileRecords, category, null);
+        showToast(`✓ ${displayName}.zenopack`, 'ok');
+      }
+    } catch(e) {
+      showToast(`FAILED: ${displayName}`, 'err');
+    }
+    done++;
+  }
+
+  bar.style.width = '100%';
+  setGitStatus(`DONE — ${done} ZENOPACK${done>1?'S':''} CREATED`, 'ok');
+  document.getElementById('gitPackBtn').disabled = false;
+}
+
+function clearGit() {
+  gitFoundGames = []; gitCurrentCfg = null; gitCurrentBranch = null;
+  document.getElementById('gitUrl').value = '';
+  document.getElementById('gitGameList').style.display = 'none';
+  document.getElementById('gitGameList').innerHTML = '';
+  document.getElementById('gitFooter').style.display = 'none';
+  document.getElementById('gitPackBtn').disabled = true;
+  document.getElementById('gitPackBtn').innerHTML = '<i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ZENOPACK(S)';
+  document.getElementById('gitProgress').style.width = '0%';
+  document.getElementById('gitCategory').value = '';
+  setGitStatus('', '');
+}
+</script>
+</body>
+</html>
