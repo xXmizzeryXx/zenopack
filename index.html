@@ -852,8 +852,9 @@ function renderGitList() {
   updateGitSelAll();
   document.getElementById('gitPackBtn').disabled = !gitFoundGames.some(g => g.selected);
   const count = gitFoundGames.filter(g => g.selected).length;
+  const zipMode = count > 3;
   document.getElementById('gitPackBtn').innerHTML = count > 0
-    ? `<i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ${count} ZENOPACK${count>1?'S':''}`
+    ? `<i class="fa-solid fa-${zipMode?'file-zipper':'box-archive'}"></i>&nbsp; ${zipMode ? `BUNDLE ${count} ZENOPACKS → .ZIP` : `CREATE ${count} ZENOPACK${count>1?'S':''}`}`
     : '<i class="fa-solid fa-box-archive"></i>&nbsp; CREATE ZENOPACK(S)';
 }
 
@@ -872,12 +873,29 @@ async function packGitSelected() {
   const toPack = gitFoundGames.filter(g => g.selected);
   if (!toPack.length) return;
   const category = document.getElementById('gitCategory').value;
+  const useZip = toPack.length > 3;
 
   document.getElementById('gitPackBtn').disabled = true;
   const bar = document.getElementById('gitProgress');
   bar.style.width = '0%';
 
+  // If more than 3 games, bundle all zenopacks into a single zip
+  let zip = null;
+  if (useZip) {
+    setGitStatus(`BUNDLING ${toPack.length} ZENOPACKS INTO ZIP...`, 'info');
+    try {
+      await loadJSZip();
+      zip = new JSZip();
+    } catch(e) {
+      setGitStatus('FAILED TO LOAD ZIP LIBRARY', 'err');
+      document.getElementById('gitPackBtn').disabled = false;
+      return;
+    }
+  }
+
   let done = 0;
+  const built = [];
+
   for (const g of toPack) {
     const displayName = g.name === '[root]' ? (gitCurrentCfg?.repo || 'Game') : g.name;
     setGitStatus(`DOWNLOADING: ${displayName} (${done+1}/${toPack.length})`, 'info');
@@ -886,7 +904,7 @@ async function packGitSelected() {
       const fileRecords = [];
       for (let i = 0; i < g.files.length; i++) {
         const f = g.files[i];
-        bar.style.width = Math.round(((done + i/g.files.length) / toPack.length) * 90) + '%';
+        bar.style.width = Math.round(((done + i/g.files.length) / toPack.length) * 88) + '%';
         try {
           const res = await fetch(f.url);
           if (!res.ok) continue;
@@ -900,9 +918,16 @@ async function packGitSelected() {
 
       if (!fileRecords.some(r => r.path.toLowerCase() === 'index.html')) {
         showToast(`SKIPPED ${displayName}: no index.html`, 'err');
+      } else if (useZip) {
+        // Build zenopack blob and add directly to zip
+        const packBlob = await buildPackBlob(displayName, fileRecords, category, null);
+        const safeName = displayName.replace(/[^a-z0-9_\-]/gi, '_') + '.zenopack';
+        zip.file(safeName, packBlob);
+        built.push(displayName);
       } else {
         await buildAndDownload(displayName, fileRecords, category, null);
         showToast(`✓ ${displayName}.zenopack`, 'ok');
+        built.push(displayName);
       }
     } catch(e) {
       showToast(`FAILED: ${displayName}`, 'err');
@@ -910,9 +935,46 @@ async function packGitSelected() {
     done++;
   }
 
+  // Generate and download the zip bundle
+  if (useZip && zip && built.length) {
+    bar.style.width = '92%';
+    setGitStatus('COMPRESSING ZIP...', 'info');
+    try {
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      const repoName = (gitCurrentCfg?.repo || 'zenopack-games').replace(/[^a-z0-9_\-]/gi, '_');
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = repoName + '-zenopacks.zip';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      showToast(`✓ ${built.length} ZENOPACKS IN ZIP`, 'ok');
+    } catch(e) {
+      setGitStatus('ZIP FAILED: ' + e.message, 'err');
+      showToast('ZIP FAILED', 'err');
+    }
+  }
+
   bar.style.width = '100%';
-  setGitStatus(`DONE — ${done} ZENOPACK${done>1?'S':''} CREATED`, 'ok');
+  setGitStatus(`DONE — ${built.length} ZENOPACK${built.length!==1?'S':''} ${useZip?'BUNDLED IN ZIP':'CREATED'}`, 'ok');
   document.getElementById('gitPackBtn').disabled = false;
+}
+
+// Build a zenopack as a Blob without triggering a download
+async function buildPackBlob(name, fileRecords, category, description) {
+  const files = [];
+  for (const r of fileRecords) {
+    const buf = await r.file.arrayBuffer();
+    files.push({ path: r.path, mimeType: r.mimeType, data: Array.from(new Uint8Array(buf)) });
+  }
+  const pack = {
+    zenopack: ZENOPACK_VERSION, name,
+    category: category || null,
+    description: description || null,
+    fileCount: files.length,
+    exportedAt: new Date().toISOString(),
+    files,
+  };
+  return new Blob([JSON.stringify(pack)], { type: 'application/octet-stream' });
 }
 
 function clearGit() {
