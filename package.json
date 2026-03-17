@@ -1,0 +1,35 @@
+{
+  "name": "zenopack",
+  "version": "1.0.0",
+  "description": "Universal game package format for browser-based unblocking platforms. Bundle any web game into a single portable .zenopack file.",
+  "main": "zenopack.js",
+  "files": [
+    "zenopack.js",
+    "zenopack-ui.js",
+    "zenopack-loader-sw.js",
+    "zenopack-spec.md",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "zenopack",
+    "games",
+    "unblocked",
+    "browser-games",
+    "game-format",
+    "portable",
+    "eclipse-suite"
+  ],
+  "author": "Mizzery",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xXmizzeryXx/zenopack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xXmizzeryXx/zenopack/issues"
+  },
+  "homepage": "https://zenopack.vercel.app"
+}
