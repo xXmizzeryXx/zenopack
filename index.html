@@ -361,6 +361,64 @@ footer a:hover { text-decoration: underline; }
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
 .fade-up { animation: fadeUp .5s ease both; }
+
+.preview-sw-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 2px;
+  padding: 4px 10px; border-radius: 3px; margin-bottom: 16px;
+  border: 1px solid rgba(0,245,255,0.2); color: var(--muted);
+  background: rgba(0,245,255,0.03);
+}
+.preview-sw-badge.ready { border-color: rgba(0,255,136,0.3); color: var(--green); }
+.preview-sw-badge.error { border-color: rgba(255,0,110,0.3); color: var(--pink); }
+.preview-sw-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.preview-sw-badge.ready .preview-sw-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pvBlink 2s infinite; }
+.preview-sw-badge.error .preview-sw-dot { background: var(--pink); }
+@keyframes pvBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.preview-drop {
+  border: 2px dashed rgba(0,245,255,.2); border-radius: 12px; padding: 36px 24px;
+  text-align: center; cursor: pointer; transition: all .25s;
+  background: rgba(0,245,255,.01); position: relative; margin-bottom: 16px;
+}
+.preview-drop:hover, .preview-drop.over {
+  border-color: rgba(0,245,255,.5); background: rgba(0,245,255,.04);
+}
+.preview-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.preview-drop .drop-icon { font-size: 2rem; margin-bottom: 10px; }
+
+.preview-player { display: none; flex-direction: column; gap: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.preview-player.visible { display: flex; }
+.preview-player-bar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);
+}
+.preview-game-title { font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 2px; color: var(--cyan); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-game-meta { font-size: 11px; color: var(--muted); }
+.preview-close-btn {
+  background: none; border: 1px solid rgba(255,0,110,0.2); border-radius: 4px;
+  color: var(--muted); width: 28px; height: 28px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 11px; transition: all .2s; flex-shrink: 0;
+}
+.preview-close-btn:hover { color: var(--pink); border-color: var(--pink); }
+.preview-fs-btn {
+  background: none; border: 1px solid rgba(0,245,255,0.15); border-radius: 4px;
+  color: var(--muted); width: 28px; height: 28px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 11px; transition: all .2s; flex-shrink: 0;
+}
+.preview-fs-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+.preview-loading {
+  height: 500px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px; background: #000;
+}
+.preview-loading.gone { display: none; }
+.preview-spin {
+  width: 40px; height: 40px; border: 2px solid rgba(0,245,255,0.1);
+  border-top-color: var(--cyan); border-radius: 50%; animation: pvSpin .8s linear infinite;
+}
+@keyframes pvSpin { to { transform: rotate(360deg); } }
+.preview-spin-label { font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 4px; color: var(--muted); }
+.preview-iframe { width: 100%; height: 500px; border: none; background: #000; display: block; }
 </style>
 </head>
 <body>
@@ -400,6 +458,7 @@ footer a:hover { text-decoration: underline; }
     <button class="conv-tab active" onclick="switchConvTab('folder',this)"><i class="fa-solid fa-folder-open"></i>&nbsp; FROM FOLDER</button>
     <button class="conv-tab" onclick="switchConvTab('git',this)"><i class="fa-solid fa-code-branch"></i>&nbsp; FROM GIT</button>
     <button class="conv-tab" onclick="switchConvTab('decompile',this)"><i class="fa-solid fa-box-open"></i>&nbsp; DECOMPILE</button>
+    <button class="conv-tab" onclick="switchConvTab('preview',this)"><i class="fa-solid fa-play"></i>&nbsp; PREVIEW</button>
   </div>
 
   <div class="converter-card">
@@ -514,6 +573,38 @@ footer a:hover { text-decoration: underline; }
           <i class="fa-solid fa-file-zipper"></i>&nbsp; EXTRACT TO .ZIP
         </button>
         <button class="btn-clear" onclick="clearDecompile()">CLEAR</button>
+      </div>
+    </div>
+
+
+    <!-- PREVIEW PANE -->
+    <div class="conv-pane" id="panePreview">
+      <div class="preview-sw-badge" id="pvSwBadge">
+        <div class="preview-sw-dot"></div>
+        <span id="pvSwLabel">SW OFFLINE</span>
+      </div>
+      <div class="preview-drop" id="pvDrop">
+        <input type="file" id="pvFileInput" accept=".zenopack">
+        <div class="drop-icon"><i class="fa-solid fa-play"></i></div>
+        <div class="drop-title">DROP A .ZENOPACK TO PREVIEW</div>
+        <div class="drop-sub">or click to browse &nbsp;•&nbsp; plays instantly in the iframe below</div>
+      </div>
+      <div class="status-row">
+        <div class="status-text" id="pvStatus"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="pvProgress"></div></div>
+      </div>
+      <div class="preview-player" id="pvPlayer">
+        <div class="preview-player-bar">
+          <div class="preview-game-title" id="pvTitle">LOADING...</div>
+          <div class="preview-game-meta" id="pvMeta"></div>
+          <button class="preview-fs-btn" onclick="pvToggleFS()" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
+          <button class="preview-close-btn" onclick="pvClose()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="preview-loading" id="pvLoading">
+          <div class="preview-spin"></div>
+          <div class="preview-spin-label">LOADING GAME</div>
+        </div>
+        <iframe class="preview-iframe" id="pvFrame" src="" allowfullscreen allow="autoplay; fullscreen; gamepad"></iframe>
       </div>
     </div>
 
@@ -1118,6 +1209,135 @@ decompileDrop.addEventListener('drop', e => {
   if (file?.name.endsWith('.zenopack')) handleDecompileInput(file);
   else { setDecompileStatus('DROP A .ZENOPACK FILE', 'err'); }
 });
+
+
+const PV_SW_PATH = '/zenopack-preview-sw.js';
+const PV_SERVE  = '/zenopack-preview';
+let pvSwReady = false, pvSwReg = null, pvGameId = null;
+
+async function pvInitSW() {
+  if (!('serviceWorker' in navigator)) { pvSetBadge('error','SW UNSUPPORTED'); return false; }
+  try {
+    pvSetBadge('','SW LOADING...');
+    pvSwReg = await navigator.serviceWorker.register(PV_SW_PATH, { scope: '/' });
+    await navigator.serviceWorker.ready;
+    pvSwReady = true; pvSetBadge('ready','SW READY'); return true;
+  } catch(e) { pvSetBadge('error','SW FAILED'); return false; }
+}
+
+function pvGetSW() { return navigator.serviceWorker?.controller || pvSwReg?.active || null; }
+
+function pvPost(msg, transfers=[]) {
+  return new Promise((res,rej) => {
+    const sw = pvGetSW(); if (!sw) return rej(new Error('No SW'));
+    const mc = new MessageChannel();
+    mc.port1.onmessage = e => res(e.data);
+    sw.postMessage(msg, [mc.port2, ...transfers]);
+    setTimeout(() => rej(new Error('SW timeout')), 10000);
+  });
+}
+
+function pvSetBadge(state, label) {
+  const b = document.getElementById('pvSwBadge');
+  b.className = 'preview-sw-badge' + (state ? ' '+state : '');
+  document.getElementById('pvSwLabel').textContent = label;
+}
+
+function pvSetStatus(msg, cls='') {
+  const el = document.getElementById('pvStatus');
+  el.textContent = msg; el.className = 'status-text' + (cls?' '+cls:'');
+}
+
+document.getElementById('pvFileInput').addEventListener('change', e => {
+  if (e.target.files[0]) pvLoad(e.target.files[0]);
+});
+
+const pvDrop = document.getElementById('pvDrop');
+pvDrop.addEventListener('dragover', e => { e.preventDefault(); pvDrop.classList.add('over'); });
+pvDrop.addEventListener('dragleave', () => pvDrop.classList.remove('over'));
+pvDrop.addEventListener('drop', e => {
+  e.preventDefault(); pvDrop.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f?.name.endsWith('.zenopack')) pvLoad(f);
+  else pvSetStatus('DROP A .ZENOPACK FILE', 'err');
+});
+
+async function pvLoad(file) {
+  pvSetStatus('READING FILE...', 'info');
+  document.getElementById('pvProgress').style.width = '15%';
+  try {
+    const text = await file.text();
+    const pack = JSON.parse(text);
+    if (!pack.zenopack || !pack.files?.length) throw new Error('Invalid .zenopack');
+    if (!pack.files.some(f => f.path.toLowerCase() === 'index.html')) throw new Error('Missing index.html');
+
+    pvSetStatus('CONNECTING TO SERVICE WORKER...', 'info');
+    document.getElementById('pvProgress').style.width = '35%';
+
+    if (!pvSwReady) {
+      const ok = await pvInitSW();
+      if (!ok) throw new Error('Service worker unavailable');
+    }
+    if (!pvGetSW()) {
+      await new Promise(r => {
+        navigator.serviceWorker.addEventListener('controllerchange', r, { once: true });
+        setTimeout(r, 3000);
+      });
+    }
+
+    if (pvGameId) {
+      try { await pvPost({ type: 'UNREGISTER', gameId: pvGameId }); } catch(e) {}
+    }
+
+    pvGameId = 'pvg' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const filesMeta = pack.files.map(f => ({ path: f.path, mimeType: f.mimeType }));
+    const buffers = pack.files.map(f => new Uint8Array(f.data).buffer);
+    const clones = buffers.map(b => b.slice(0));
+
+    document.getElementById('pvProgress').style.width = '65%';
+    pvSetStatus('REGISTERING FILES...', 'info');
+
+    const res = await pvPost({ type: 'REGISTER', gameId: pvGameId, filesMeta, buffers: clones }, clones);
+    if (res.type !== 'REGISTERED') throw new Error('SW registration failed');
+
+    document.getElementById('pvProgress').style.width = '100%';
+    setTimeout(() => document.getElementById('pvProgress').style.width = '0%', 800);
+
+    document.getElementById('pvTitle').textContent = (pack.name || 'Game').toUpperCase();
+    document.getElementById('pvMeta').textContent = pack.category ? pack.category.toUpperCase() : '';
+    document.getElementById('pvPlayer').classList.add('visible');
+    document.getElementById('pvLoading').classList.remove('gone');
+    document.getElementById('pvFrame').src = '';
+
+    setTimeout(() => {
+      document.getElementById('pvFrame').src = `${PV_SERVE}/${pvGameId}/index.html`;
+    }, 80);
+    document.getElementById('pvFrame').onload = () => document.getElementById('pvLoading').classList.add('gone');
+
+    pvSetStatus(`PLAYING: ${pack.name}`, 'ok');
+    document.getElementById('pvPlayer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch(e) {
+    pvSetStatus('FAILED: ' + e.message, 'err');
+    document.getElementById('pvProgress').style.width = '0%';
+  }
+  document.getElementById('pvFileInput').value = '';
+}
+
+function pvClose() {
+  document.getElementById('pvFrame').src = '';
+  document.getElementById('pvPlayer').classList.remove('visible');
+  document.getElementById('pvLoading').classList.remove('gone');
+  pvSetStatus('', '');
+}
+
+function pvToggleFS() {
+  const player = document.getElementById('pvPlayer');
+  if (!document.fullscreenElement) player.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+
+pvInitSW();
 
 </script>
 </body>
