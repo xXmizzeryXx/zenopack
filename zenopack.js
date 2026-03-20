@@ -1,10 +1,3 @@
-/*!
- * zenopack.js v1.0.0
- * The universal game package format for browser-based unblockers.
- * https://github.com/xXmizzeryXx/zenopack
- * MIT License
- */
-
 (function (global) {
   'use strict';
 
@@ -27,13 +20,6 @@
     return MIME_MAP[ext] || 'application/octet-stream';
   }
 
-  // ── VALIDATION ────────────────────────────────────────────────────
-
-  /**
-   * Validate a parsed zenopack object.
-   * @param {object} pack - The parsed JSON object
-   * @returns {{ valid: boolean, errors: string[] }}
-   */
   function validate(pack) {
     const errors = [];
 
@@ -60,13 +46,6 @@
     return { valid: errors.length === 0, errors };
   }
 
-  // ── IMPORT ────────────────────────────────────────────────────────
-
-  /**
-   * Parse a .zenopack File or Blob into a usable game object.
-   * @param {File|Blob} file
-   * @returns {Promise<ZenoPackGame>}
-   */
   async function importPack(file) {
     if (!file) throw new Error('No file provided');
 
@@ -81,12 +60,10 @@
     const { valid, errors } = validate(pack);
     if (!valid) throw new Error('Invalid .zenopack: ' + errors.join('; '));
 
-    // Reconstruct File objects from byte arrays
     const fileRecords = pack.files.map(f => {
       const buffer = new Uint8Array(f.data).buffer;
       const fileName = f.path.split('/').pop();
       const fileObj = new File([buffer], fileName, { type: f.mimeType });
-      // Attach webkitRelativePath-style path
       Object.defineProperty(fileObj, 'webkitRelativePath', {
         value: pack.name + '/' + f.path,
         writable: false, configurable: true
@@ -105,19 +82,6 @@
     };
   }
 
-  // ── EXPORT ────────────────────────────────────────────────────────
-
-  /**
-   * Export a game to a .zenopack file and trigger a download.
-   * @param {object} options
-   * @param {string} options.name - Game name
-   * @param {string|null} [options.icon] - Base64 data URL icon
-   * @param {string|null} [options.category] - Optional category tag
-   * @param {string|null} [options.description] - Optional description
-   * @param {Array<{file: File, path: string, mimeType: string}>} options.fileRecords
-   * @param {boolean} [options.download=true] - Whether to auto-download
-   * @returns {Promise<Blob>} The .zenopack blob
-   */
   async function exportPack(options) {
     const { name, icon = null, category = null, description = null, fileRecords, download = true } = options;
 
@@ -162,13 +126,6 @@
     return blob;
   }
 
-  // ── EXPORT FROM FILE INPUTS ───────────────────────────────────────
-
-  /**
-   * Build fileRecords from a FileList (e.g. from a folder input or drop).
-   * @param {FileList|File[]} fileList
-   * @returns {object|null} { name, fileRecords } or null if no index.html found
-   */
   function fileListToRecords(fileList) {
     const files = Array.from(fileList);
     const name = files[0]?.webkitRelativePath?.split('/')[0] || 'Game';
@@ -187,8 +144,6 @@
     return { name, fileRecords };
   }
 
-  // ── PUBLIC API ────────────────────────────────────────────────────
-
   const ZenoPack = {
     version: ZENOPACK_VERSION,
     validate,
@@ -198,7 +153,6 @@
     getMime,
   };
 
-  // UMD export
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = ZenoPack;
   } else if (typeof define === 'function' && define.amd) {
