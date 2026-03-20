@@ -1,15 +1,6 @@
-/*!
- * zenopack-ui.js v1.0.0
- * Optional drop-in UI for importing .zenopack files.
- * Requires zenopack.js to be loaded first.
- * https://github.com/xXmizzeryXx/zenopack
- * MIT License
- */
-
 (function (global) {
   'use strict';
 
-  // ── DEFAULT STYLES ────────────────────────────────────────────────
   const DEFAULT_STYLES = `
 .znpk-wrap {
   font-family: system-ui, sans-serif;
@@ -85,7 +76,6 @@
 }
 `;
 
-  // ── INJECT STYLES ─────────────────────────────────────────────────
   function injectStyles(customStyles) {
     if (document.getElementById('znpk-styles')) return;
     const style = document.createElement('style');
@@ -94,21 +84,6 @@
     document.head.appendChild(style);
   }
 
-  // ── CREATE UI ─────────────────────────────────────────────────────
-
-  /**
-   * Create a ZenoPack import UI and mount it into a container element.
-   *
-   * @param {HTMLElement|string} container - Element or CSS selector to mount into
-   * @param {object} options
-   * @param {function} options.onImport - Called with (gameData) when a pack is successfully imported
-   * @param {function} [options.onError] - Called with (error) on failure
-   * @param {string} [options.title] - Custom drop zone title
-   * @param {string} [options.subtitle] - Custom drop zone subtitle
-   * @param {string} [options.icon] - Custom icon (emoji or HTML)
-   * @param {string} [options.styles] - Additional CSS to inject
-   * @returns {{ setStatus, setProgress, destroy }}
-   */
   function createImportUI(container, options = {}) {
     if (!global.ZenoPack) {
       throw new Error('zenopack.js must be loaded before zenopack-ui.js');
@@ -129,7 +104,6 @@
       icon = '📦',
     } = options;
 
-    // Build DOM
     const wrap = document.createElement('div');
     wrap.className = 'znpk-wrap';
     wrap.innerHTML = `
@@ -147,13 +121,12 @@
 
     container.appendChild(wrap);
 
-    const dropEl    = wrap.querySelector('#znpk-drop');
-    const inputEl   = wrap.querySelector('#znpk-input');
-    const statusEl  = wrap.querySelector('#znpk-status');
+    const dropEl     = wrap.querySelector('#znpk-drop');
+    const inputEl    = wrap.querySelector('#znpk-input');
+    const statusEl   = wrap.querySelector('#znpk-status');
     const progressEl = wrap.querySelector('#znpk-progress');
-    const barEl     = wrap.querySelector('#znpk-progress-bar');
+    const barEl      = wrap.querySelector('#znpk-progress-bar');
 
-    // ── Helpers ──
     function setStatus(msg, type = '') {
       statusEl.textContent = msg;
       statusEl.className = 'znpk-status' + (type ? ' znpk-' + type : '');
@@ -164,7 +137,6 @@
       barEl.style.width = Math.min(100, pct) + '%';
     }
 
-    // ── File handling ──
     async function handleFile(file) {
       if (!file) return;
       if (!file.name.endsWith('.zenopack')) {
@@ -193,7 +165,6 @@
       inputEl.value = '';
     }
 
-    // ── Events ──
     inputEl.addEventListener('change', () => handleFile(inputEl.files[0]));
 
     dropEl.addEventListener('dragover', e => {
@@ -208,7 +179,6 @@
       handleFile(file);
     });
 
-    // ── Cleanup ──
     function destroy() {
       container.removeChild(wrap);
     }
@@ -216,7 +186,6 @@
     return { setStatus, setProgress, destroy };
   }
 
-  // ── PUBLIC API ────────────────────────────────────────────────────
   const ZenoPack_UI = { createImportUI };
 
   if (typeof module !== 'undefined' && module.exports) {
